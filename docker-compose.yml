@@ -1,0 +1,8 @@
+version: '3.3'
+
+services:
+  web:
+    image: 127.0.0.1:5000/www.carlyzach.com
+    build: .
+    ports:
+      - "3021:3021"
