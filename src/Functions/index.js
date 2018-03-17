@@ -20,26 +20,28 @@ const Functions = ({ match: { url } }) => {
           </Switch>
         </div>
         <div className="row">
-          <Switch>
-            <Route path={`${url}/markdown`} exact component={Markdown} />
-            <Route path={`${url}/rmb-to-usd`} exact component={RmbToUsd} />
-            <Route path={`${url}`} exact>
-              <ul className="list-group">
-                <Link
-                  to={`${url}/rmb-to-usd`}
-                  className="list-group-item list-group-item-action"
-                >
-                  Convert RMB to USD
-                </Link>
-                <Link
-                  to={`${url}/markdown`}
-                  className="list-group-item list-group-item-action"
-                >
-                  Render Markdown as HTML
-                </Link>
-              </ul>
-            </Route>
-          </Switch>
+          <div className="col-12">
+            <Switch>
+              <Route path={`${url}/markdown`} exact component={Markdown} />
+              <Route path={`${url}/rmb-to-usd`} exact component={RmbToUsd} />
+              <Route path={`${url}`} exact>
+                <ul className="list-group">
+                  <Link
+                    to={`${url}/rmb-to-usd`}
+                    className="list-group-item list-group-item-action"
+                  >
+                    Convert RMB to USD
+                  </Link>
+                  <Link
+                    to={`${url}/markdown`}
+                    className="list-group-item list-group-item-action"
+                  >
+                    Render Markdown as HTML
+                  </Link>
+                </ul>
+              </Route>
+            </Switch>
+          </div>
         </div>
       </div>
     </div>

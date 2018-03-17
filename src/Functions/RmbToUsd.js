@@ -1,7 +1,8 @@
 import React from "react";
 import { Button, Form, FormGroup, Input, Label } from "reactstrap";
 import { PropTypes } from "prop-types";
-import { connect, PromiseState } from "react-refetch";
+import { PromiseState } from "react-refetch";
+import connect from "./API";
 
 class RmbToUsdFunction extends React.Component {
   static propTypes = {
@@ -121,10 +122,8 @@ class RmbToUsdFunction extends React.Component {
 export default connect(() => ({
   convert: state => ({
     convertFetch: {
-      url: "https://functions.carlyzach.com/rmb-to-usd",
-      method: "POST",
-      body: JSON.stringify({ to: state.to, ammount: state.ammount }),
-      force: true
+      url: "/rmb-to-usd",
+      body: { to: state.to, ammount: state.ammount }
     }
   })
 }))(RmbToUsdFunction);
