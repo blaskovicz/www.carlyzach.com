@@ -7,7 +7,7 @@ import {
   Switch,
   Redirect
 } from "react-router-dom";
-//import logo from "./logo.svg";
+import FontAwesome from "react-fontawesome";
 import "./App.css";
 
 // routes
@@ -61,9 +61,18 @@ class App extends Component {
               <Redirect to="/" />
             </Switch>
           </main>
-          <footer className="pl-2 footer">
+          <footer className="footer">
             <div className="container">
-              <a href="https://github.com/blaskovicz">CarlyZach on Github</a>
+              <span className="text-muted">
+                <a
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  href="https://github.com/blaskovicz"
+                >
+                  <FontAwesome name="github" className="pr-1" />
+                  CarlyZach on Github
+                </a>
+              </span>
             </div>
           </footer>
         </div>
