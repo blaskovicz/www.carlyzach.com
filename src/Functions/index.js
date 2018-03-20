@@ -1,6 +1,7 @@
 import React from "react";
 import Markdown from "./Markdown";
 import RmbToUsd from "./RmbToUsd";
+import Playground from "./Playground";
 import { Switch, Route, Link } from "react-router-dom";
 import PropTypes from "prop-types";
 const Functions = ({ match: { url } }) => {
@@ -22,10 +23,17 @@ const Functions = ({ match: { url } }) => {
         <div className="row">
           <div className="col-12">
             <Switch>
+              <Route path={`${url}/playground`} exact component={Playground} />
               <Route path={`${url}/markdown`} exact component={Markdown} />
               <Route path={`${url}/rmb-to-usd`} exact component={RmbToUsd} />
               <Route path={`${url}`} exact>
                 <ul className="list-group">
+                  <Link
+                    to={`${url}/playground`}
+                    className="list-group-item list-group-item-action"
+                  >
+                    Code Playground
+                  </Link>
                   <Link
                     to={`${url}/rmb-to-usd`}
                     className="list-group-item list-group-item-action"
