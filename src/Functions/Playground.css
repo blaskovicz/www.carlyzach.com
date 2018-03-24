@@ -1,0 +1,31 @@
+.output {
+  font-size: 12pt;
+  white-space: pre;
+  word-break: break-all;
+  border: 1px solid rgb(223, 223, 223);
+  border-radius: 5px;
+  min-height: 6em;
+  max-height: 12em;
+  overflow-y: auto;
+  overflow-x: hidden;
+  font-family: monospace;
+}
+
+.output .error {
+  color: #d60404;
+}
+
+.output .completed {
+  color: #999;
+}
+
+.error-line {
+  background: #d60404;
+  width: 5px !important;
+  left: 3px;
+  /*color: red !important;
+  cursor: pointer;
+  text-decoration: underline;
+  font-weight: bold;
+  font-style: oblique;*/
+}

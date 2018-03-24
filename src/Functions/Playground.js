@@ -1,9 +1,11 @@
 import React from "react";
 import MonacoEditor from "react-monaco-editor";
-import { Button, Input, Alert } from "reactstrap";
+import { Button, Input } from "reactstrap";
 import { PropTypes } from "prop-types";
 import { PromiseState } from "react-refetch";
+import FontAwesome from "react-fontawesome";
 import connect from "./API";
+import "./Playground.css";
 
 class PlaygroundFunction extends React.Component {
   static options = {
@@ -28,11 +30,12 @@ class PlaygroundFunction extends React.Component {
   constructor(props) {
     super(props);
     this.updateWindowSize = this.updateWindowSize.bind(this);
-
+    this.errorRanges = [];
     this.state = {
       width: 0,
       height: 0,
       bounds: null,
+      events: [],
       errors: [],
       language: { editor: "go", function: "golang" },
       code: `package main
@@ -70,7 +73,49 @@ func main() {
     });
   }
 
+  // https://microsoft.github.io/monaco-editor/playground.html#interacting-with-the-editor-line-and-inline-decorations
+  decorateMonacoErrors(errors) {
+    // map all errors to all sub-error arrays, then unfurl
+    const decorations = errors
+      .map(e => this.lineHighlight(e))
+      .filter(e => e !== null);
+    const newRanges = [];
+    for (let lineArray of decorations) {
+      for (let line of lineArray) {
+        newRanges.push({
+          range: new this.monaco.Range(line, 1, line, 1),
+          options: {
+            isWholeLine: true,
+            linesDecorationsClassName: "error-line"
+          }
+        });
+      }
+    }
+
+    // https://microsoft.github.io/monaco-editor/api/interfaces/monaco.editor.itextmodel.html#deltadecorations
+    this.errorRanges = this.editor.deltaDecorations(
+      this.errorRanges,
+      newRanges
+    );
+  }
+
+  // one error may span multiple lines, so return lines in an array
+  lineHighlight(error) {
+    if (this.state.language.editor !== "go") return null;
+    const regex = /prog.go:([0-9]+)/g;
+    let r = regex.exec(error);
+    const lines = [];
+    while (r) {
+      lines.push(+r[1]);
+      r = regex.exec(error);
+    }
+    return lines.length === 0 ? null : lines;
+  }
+
   editorDidMount = (editor, monaco) => {
+    // for later use since we can't pass the component props directly
+    if (!this.editor) this.editor = editor;
+    if (!this.monaco) this.monaco = monaco;
     editor.focus();
   };
 
@@ -87,9 +132,11 @@ func main() {
     this.setState({ errors: [] });
     this.props.compile(this.state);
   };
+
   static noPx(px) {
     return +px.replace("px", "");
   }
+
   getBounds() {
     const appElement = document.getElementById("App");
     if (!appElement) return null;
@@ -113,28 +160,70 @@ func main() {
       fetchIs.fulfilled &&
       (!fetchWas || !fetchWas.fulfilled || fetchWas.value !== fetchIs.value)
     ) {
+      const errors = [fetchIs.value.Error].filter(e => e !== "" && e !== null);
+      this.decorateMonacoErrors(errors);
       this.setState({
+        events: null,
         code: fetchIs.value.Body === "" ? this.state.code : fetchIs.value.Body,
-        errors: [fetchIs.value.Error].filter(e => e !== "" && e !== null)
+        errors
       });
+    } else if (
+      fetchIs &&
+      fetchIs.rejected &&
+      (!fetchWas || !fetchWas.rejected)
+    ) {
+      this.setState({
+        events: null,
+        errors: [fetchIs.reason.toString()].filter(e => e !== "" && e !== null)
+      });
+    } else if (fetchIs && fetchIs.pending && (!fetchWas || !fetchWas.pending)) {
+      this.setState({ events: null, errors: null });
     }
 
     // compile changed, update code and errors
     fetchWas = this.props.compileFetch;
     fetchIs = nextProps.compileFetch;
-    if (fetchIs && fetchIs.fulfilled && (!fetchWas || !fetchWas.fulfilled)) {
+    if (
+      fetchIs &&
+      fetchIs.fulfilled &&
+      (!fetchWas || !fetchWas.fulfilled || fetchWas.value !== fetchIs.value)
+    ) {
+      const errors = [fetchIs.value.Errors].filter(e => e !== "" && e !== null);
+      this.decorateMonacoErrors(errors);
       this.setState({
-        errors: [fetchIs.value.Errors].filter(e => e !== "" && e !== null)
+        events: null,
+        errors
       });
+    } else if (
+      fetchIs &&
+      fetchIs.rejected &&
+      (!fetchWas || !fetchWas.rejected)
+    ) {
+      this.setState({
+        events: null,
+        errors: [fetchIs.reason.toString()].filter(e => e !== "" && e !== null)
+      });
+    } else if (fetchIs && fetchIs.pending && (!fetchWas || !fetchWas.pending)) {
+      this.setState({ events: null, errors: null });
     }
   }
 
   render() {
-    const { code, language, errors, width, height, bounds } = this.state;
+    const {
+      code,
+      events,
+      language,
+      errors,
+      width,
+      height,
+      bounds
+    } = this.state;
     const { compileFetch, formatFetch } = this.props;
 
     const compiling = compileFetch && compileFetch.pending;
     const formatting = formatFetch && formatFetch.pending;
+    const compiled = compileFetch && !compileFetch.pending;
+    const formatted = formatFetch && !formatFetch.pending;
 
     let editorWidth = width;
     let editorHeight = height / 2;
@@ -171,6 +260,9 @@ func main() {
             >
               Format
             </Button>
+            {(compiling || formatting) && (
+              <FontAwesome className="ml-2" name="spinner" spin />
+            )}
           </div>
         </div>
         <div className="row">
@@ -192,58 +284,44 @@ func main() {
         <div className="row mt-1">
           <div className="col-12 mx-auto">
             <div
-              className="mb-2"
+              className="mb-2 output"
               style={{
-                whiteSpace: "pre",
-                wordBreak: "break-all",
-                border: "1px solid rgb(223, 223, 223)",
-                borderRadius: "5px",
-                minHeight: "10em",
-                width: editorWidth,
-                fontFamily: "monospace"
+                width: editorWidth
               }}
             >
-              {compileFetch &&
-                compileFetch.value &&
-                compileFetch.value.Events &&
-                compileFetch.value.Events.map(e => (
-                  <div
-                    key={e.Message + e.Kind + e.Delay}
-                    style={{ color: e.Kind === "stderr" && "#d60404" }}
-                  >
-                    [{e.Kind}]{" "}
-                    {e.Message !== "" ? e.Message : JSON.stringify(e)}
+              {errors &&
+                errors.length !== 0 && (
+                  <div>
+                    {errors.map(e => (
+                      <div className="error" key={e}>
+                        {e}
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
+              {events && (
+                <div>
+                  {events.map(e => (
+                    <div
+                      key={e.Message + e.Kind + e.Delay}
+                      className={e.Kind === "stderr" ? "error" : undefined}
+                    >
+                      [{e.Kind}]{" "}
+                      {e.Message !== "" ? e.Message : JSON.stringify(e)}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {(compiled || formatted) &&
+                (!compiling && !formatting) && (
+                  <div className="completed">
+                    <FontAwesome name="angle-double-right" className="pr-1" />
+                    Program exited.
+                  </div>
+                )}
             </div>
           </div>
         </div>
-        {errors &&
-          errors.length > 0 && (
-            <div className="row mt-2">
-              <div className="col-md-12">
-                <Alert color="danger">
-                  <ul>{errors.map(e => <li key={e}>{e}</li>)}</ul>
-                </Alert>
-              </div>
-            </div>
-          )}
-        {formatFetch &&
-          formatFetch.rejected && (
-            <div className="row mt-2">
-              <div className="col-md-12">
-                <Alert color="danger">{formatFetch.reason.toString()}</Alert>
-              </div>
-            </div>
-          )}
-        {compileFetch &&
-          compileFetch.rejected && (
-            <div className="row mt-2">
-              <div className="col-md-12">
-                <Alert color="danger">{compileFetch.reason.toString()}</Alert>
-              </div>
-            </div>
-          )}
       </div>
     );
   }
