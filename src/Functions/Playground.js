@@ -27,7 +27,12 @@ class PlaygroundFunction extends React.Component {
 
   constructor(props) {
     super(props);
+    this.updateWindowSize = this.updateWindowSize.bind(this);
+
     this.state = {
+      width: 0,
+      height: 0,
+      bounds: null,
       errors: [],
       language: { editor: "go", function: "golang" },
       code: `package main
@@ -41,6 +46,28 @@ func main() {
 }            
 `
     };
+  }
+
+  componentDidMount() {
+    this.updateWindowSize();
+    window.addEventListener("resize", this.updateWindowSize);
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener("resize", this.updateWindowSize);
+  }
+
+  updateWindowSize() {
+    if (
+      window.innerHeight === this.state.height &&
+      window.innerWidth === this.state.width
+    )
+      return;
+    this.setState({
+      width: window.innerWidth,
+      height: window.innerHeight,
+      bounds: this.getBounds()
+    });
   }
 
   editorDidMount = (editor, monaco) => {
@@ -60,6 +87,22 @@ func main() {
     this.setState({ errors: [] });
     this.props.compile(this.state);
   };
+  static noPx(px) {
+    return +px.replace("px", "");
+  }
+  getBounds() {
+    const appElement = document.getElementById("App");
+    if (!appElement) return null;
+    const s = window.getComputedStyle(appElement);
+    return [
+      this.constructor.noPx(s.paddingTop) + this.constructor.noPx(s.marginTop), // top,
+      this.constructor.noPx(s.paddingRight) +
+        this.constructor.noPx(s.marginRight), // right,
+      this.constructor.noPx(s.paddingBottom) +
+        this.constructor.noPx(s.marginBottom), // bottom,
+      this.constructor.noPx(s.paddingLeft) + this.constructor.noPx(s.marginLeft) // left,
+    ];
+  }
 
   componentWillReceiveProps(nextProps) {
     // format changed, update code and errors
@@ -87,21 +130,28 @@ func main() {
   }
 
   render() {
-    const { code, language, errors } = this.state;
+    const { code, language, errors, width, height, bounds } = this.state;
     const { compileFetch, formatFetch } = this.props;
 
     const compiling = compileFetch && compileFetch.pending;
     const formatting = formatFetch && formatFetch.pending;
 
+    let editorWidth = width;
+    let editorHeight = height / 2;
+    // 0 top, 1 right, 2 bottom, 3 left
+    if (bounds !== null) {
+      editorWidth = editorWidth - bounds[1] - bounds[3];
+    }
+
     return (
       <div>
-        <div className="row mb-2">
-          <div className="col-2">
+        <div className="row mb-1">
+          <div className="col-3">
             <Input type="select" disabled>
               <option>Golang</option>
             </Input>
           </div>
-          <div className="col-3">
+          <div className="col-9">
             <Button
               type="button"
               onClick={this.runCode}
@@ -124,10 +174,11 @@ func main() {
           </div>
         </div>
         <div className="row">
-          <div className="col-12">
+          <div className="col-12 mx-auto" style={{ height: editorHeight }}>
             <MonacoEditor
-              width="800"
-              height="600"
+              className="mx-auto"
+              height={editorHeight}
+              width={editorWidth}
               language={language.editor}
               theme="vs-dark"
               value={code}
@@ -138,8 +189,8 @@ func main() {
             />
           </div>
         </div>
-        <div className="row mt-2">
-          <div className="col-md-11">
+        <div className="row mt-1">
+          <div className="col-12 mx-auto">
             <div
               className="mb-2"
               style={{
@@ -147,8 +198,8 @@ func main() {
                 wordBreak: "break-all",
                 border: "1px solid rgb(223, 223, 223)",
                 borderRadius: "5px",
-                width: "100%",
                 minHeight: "10em",
+                width: editorWidth,
                 fontFamily: "monospace"
               }}
             >
@@ -170,7 +221,7 @@ func main() {
         {errors &&
           errors.length > 0 && (
             <div className="row mt-2">
-              <div className="col-md-11">
+              <div className="col-md-12">
                 <Alert color="danger">
                   <ul>{errors.map(e => <li key={e}>{e}</li>)}</ul>
                 </Alert>
@@ -180,7 +231,7 @@ func main() {
         {formatFetch &&
           formatFetch.rejected && (
             <div className="row mt-2">
-              <div className="col-md-11">
+              <div className="col-md-12">
                 <Alert color="danger">{formatFetch.reason.toString()}</Alert>
               </div>
             </div>
@@ -188,7 +239,7 @@ func main() {
         {compileFetch &&
           compileFetch.rejected && (
             <div className="row mt-2">
-              <div className="col-md-11">
+              <div className="col-md-12">
                 <Alert color="danger">{compileFetch.reason.toString()}</Alert>
               </div>
             </div>

@@ -54,7 +54,7 @@ class App extends Component {
               </div>
             </nav>
           </header>
-          <main className="App container">
+          <main id="App" className="App container">
             <Switch>
               <Route exact path="/" component={Home} />
               <Route path="/functions" component={Functions} />
