@@ -191,7 +191,7 @@ func main() {
       const errors = [fetchIs.value.Errors].filter(e => e !== "" && e !== null);
       this.decorateMonacoErrors(errors);
       this.setState({
-        events: null,
+        events: fetchIs.value.Events,
         errors
       });
     } else if (
