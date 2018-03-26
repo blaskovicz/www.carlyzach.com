@@ -92,6 +92,7 @@ func main() {
   };
 
   setToken = token => {
+    if (token === "") token = null;
     this.gh = new GitHub({ token });
     this.setState({ token });
   };
