@@ -97,7 +97,14 @@ func main() {
   };
 
   loadAuth = () => {
-    return fetch("/oauth2/token")
+    return fetch("/oauth2/token", {
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        Cache: "no-cache"
+      },
+      credentials: "same-origin"
+    })
       .then(resp => {
         return resp.json();
       })
@@ -165,6 +172,8 @@ func main() {
   };
 
   handleGist = ({ data }) => {
+    // TODO prompt here since we can effectively overwrite our code if we
+    // refresh the page 2x on a gist
     this.onUnload(); // save whatever we had
 
     if (!data || !data.files) return;
@@ -428,7 +437,7 @@ func main() {
               </span>
             )}
             {!id &&
-              token && (
+              token != null && (
                 <Button
                   type="button"
                   onClick={this.shareGist}
@@ -441,7 +450,7 @@ func main() {
                 </Button>
               )}
             {!id &&
-              !token && (
+              token == null && (
                 <Button
                   type="button"
                   onClick={this.startLoginFlow}
@@ -450,7 +459,7 @@ func main() {
                   className="ml-2"
                   disabled={compiling || formatting || codeIsDefault}
                 >
-                  <FontAwesome name="github" /> Login & Share
+                  <FontAwesome name="github" /> Login to share
                 </Button>
               )}
             {(compiling || formatting) && (
