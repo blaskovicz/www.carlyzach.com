@@ -23,7 +23,11 @@ const Functions = ({ match: { url } }) => {
         <div className="row">
           <div className="col-12">
             <Switch>
-              <Route path={`${url}/playground`} exact component={Playground} />
+              <Route
+                path={`${url}/playground/:id?`}
+                exact
+                component={Playground}
+              />
               <Route path={`${url}/markdown`} exact component={Markdown} />
               <Route path={`${url}/rmb-to-usd`} exact component={RmbToUsd} />
               <Route path={`${url}`} exact>
