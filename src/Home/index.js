@@ -10,7 +10,7 @@ export default function() {
         className="img-fluid rounded"
         alt="cat pic"
         style={{
-          maxHeight: "100%",
+          maxHeight: "600px",
           border: "1px solid #ded8d8",
           WebkitFilter: "grayscale(100%)",
           filter: "grayscale(100%)"
