@@ -73,21 +73,51 @@ func main() {
       bounds: null,
       events: null,
       errors: null,
+      gistError: null,
+      gists: [],
       language: { editor, function: func },
       code
     };
     this.loadAuth();
   }
 
-  loadGist = () => {
-    const { match: { params: { id } } } = this.props;
-    if (id === undefined) return;
+  loadRelatedGists = () => {
     this.gh
-      .getGist(id)
+      .getGist()
+      .listGists()
+      .then(g => this.handleGistList(g))
+      .catch(err => {
+        console.warn("Failed load of related gists:", err);
+      });
+  };
+
+  loadGist = e => {
+    const {
+      match: {
+        params: { id }
+      },
+      history
+    } = this.props;
+    let gistID;
+    if (e === undefined || e.target.value === undefined) {
+      if (id === undefined) return;
+      gistID = id;
+    } else {
+      gistID = e.target.value;
+    }
+    this.gh
+      .getGist(gistID)
       .read()
       .then(g => this.handleGist(g))
+      .then(() => {
+        this.setState({ gistError: null });
+        const newPath = `/functions/playground/${gistID}`;
+        if (history.location.pathname.endsWith(newPath)) return;
+        history.push(newPath); // ... -> playground/:id
+      })
       .catch(err => {
-        console.warn("Failed initial load of gist:", err);
+        this.setState({ gistError: err });
+        console.warn(`Failed load of gist ${gistID}:`, err);
       });
   };
 
@@ -98,25 +128,32 @@ func main() {
   };
 
   loadAuth = () => {
-    return fetch("/oauth2/token", {
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        Cache: "no-cache"
-      },
-      credentials: "same-origin"
-    })
-      .then(resp => {
-        return resp.json();
-      })
+    return (process.env.REACT_APP_ACCESS_TOKEN
+      ? new Promise((resolve, reject) => {
+          console.debug(
+            `Using access_token ${process.env.REACT_APP_ACCESS_TOKEN}`
+          );
+          return resolve({ access_token: process.env.REACT_APP_ACCESS_TOKEN });
+        })
+      : fetch("/oauth2/token", {
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            Cache: "no-cache"
+          },
+          credentials: "same-origin"
+        }).then(resp => {
+          return resp.json();
+        })
+    )
       .then(resp => {
         this.setToken(resp.access_token);
         this.loadGist();
+        this.loadRelatedGists();
       })
       .catch(err => {
         console.warn("Failed to load token:", err);
         this.setToken(null);
-        this.loadGist();
       });
   };
 
@@ -145,12 +182,18 @@ func main() {
   }
 
   isDefaultCode = () => {
-    const { code, language: { editor } } = this.state;
+    const {
+      code,
+      language: { editor }
+    } = this.state;
     return code === this.constructor.starterCode[editor];
   };
 
   onUnload = () => {
-    const { code, language: { editor } } = this.state;
+    const {
+      code,
+      language: { editor }
+    } = this.state;
     if (!this.isDefaultCode()) {
       console.log("Saving code to localStorage");
       localStorage.setItem("code", code);
@@ -166,10 +209,16 @@ func main() {
   };
 
   startLoginFlow = () => {
-    const { match: { url } } = this.props;
+    const {
+      match: { url }
+    } = this.props;
     window.location = `https://www.carlyzach.com/oauth2/start?rd=${encodeURIComponent(
       url
     )}`;
+  };
+
+  handleGistList = ({ data }) => {
+    this.setState({ gists: data });
   };
 
   handleGist = ({ data }) => {
@@ -187,13 +236,16 @@ func main() {
   };
 
   shareGist = () => {
-    const { match: { url }, history } = this.props;
+    const {
+      match: { url },
+      history
+    } = this.props;
     let gist = this.gh.getGist();
     gist
       .create({
         public: false,
         description:
-          "Code-share from https://www.carlyzach.com/functions/playground",
+          "Created on https://www.carlyzach.com/functions/playground",
         files: {
           "prog.go": {
             content: this.state.code
@@ -202,16 +254,24 @@ func main() {
       })
       .then(() => gist.read())
       .then(g => {
+        this.setState({ gistError: null });
         this.handleGist(g);
         history.push(`${url}/${g.data.id}`); // playground -> playground/:id
       })
       .catch(err => {
+        this.setState({ gistError: err });
         console.warn("Failed to load gist after share:", err);
       });
   };
 
   resetCode = () => {
-    const { match: { url, params: { id } }, history } = this.props;
+    const {
+      match: {
+        url,
+        params: { id }
+      },
+      history
+    } = this.props;
     this.decorateMonacoErrors([]);
     this.setState({
       events: null,
@@ -369,9 +429,17 @@ func main() {
       width,
       height,
       bounds,
-      token
+      token,
+      gists,
+      gistError
     } = this.state;
-    const { compileFetch, formatFetch, match: { params: { id } } } = this.props;
+    const {
+      compileFetch,
+      formatFetch,
+      match: {
+        params: { id }
+      }
+    } = this.props;
 
     const codeIsDefault = this.isDefaultCode();
 
@@ -390,8 +458,8 @@ func main() {
     return (
       <div>
         <div className="row mb-1">
-          <div className="col-3">
-            <Input type="select" disabled>
+          <div className="col-2">
+            <Input type="select" disabled style={{ paddingTop: "1px" }}>
               <option>Golang</option>
             </Input>
           </div>
@@ -428,12 +496,16 @@ func main() {
             {id && (
               <span className="ml-2">
                 <a
-                  className=""
+                  className={`btn ${
+                    gistError ? "btn-danger" : "btn-outline-primary"
+                  }`}
                   target="_blank"
+                  title={gistError ? gistError.toString() : ""}
                   rel="noopener noreferer"
                   href={`https://gist.github.com/${id}`}
                 >
-                  <FontAwesome name="github" /> Gist {id}
+                  <FontAwesome name="github" /> Gist{" "}
+                  {gistError ? "Error" : String(id).substring(0, 10)}
                 </a>
               </span>
             )}
@@ -450,6 +522,27 @@ func main() {
                   <FontAwesome name="github" /> Share
                 </Button>
               )}
+            {token != null && (
+              <div style={{ display: "inline-block" }} className="ml-2">
+                <Input
+                  onChange={this.loadGist}
+                  type="select"
+                  style={{ paddingTop: "1px" }}
+                  value={id}
+                >
+                  <option>Select a Gist</option>
+                  {gists.map(g => (
+                    <option
+                      key={g.id}
+                      value={g.id}
+                      disabled={id && String(id) === String(g.id)}
+                    >
+                      {g.description.substring(0, 20)}...
+                    </option>
+                  ))}
+                </Input>
+              </div>
+            )}
             {!id &&
               token == null && (
                 <Button
@@ -460,7 +553,7 @@ func main() {
                   className="ml-2"
                   disabled={compiling || formatting || codeIsDefault}
                 >
-                  <FontAwesome name="github" /> Login to share
+                  <FontAwesome name="github" /> Login to Share
                 </Button>
               )}
             {(compiling || formatting) && (
