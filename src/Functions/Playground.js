@@ -74,6 +74,8 @@ func main() {
       events: null,
       errors: null,
       gistError: null,
+      gist: null,
+      currentUser: null,
       gists: [],
       language: { editor, function: func },
       code
@@ -83,7 +85,7 @@ func main() {
 
   loadRelatedGists = () => {
     this.gh
-      .getGist()
+      .getUser()
       .listGists()
       .then(g => this.handleGistList(g))
       .catch(err => {
@@ -104,13 +106,22 @@ func main() {
       gistID = id;
     } else {
       gistID = e.target.value;
+      if (gistID === "") {
+        this.clearGist();
+        return;
+      }
     }
+    this.setState({
+      events: null,
+      errors: null,
+      gist: null,
+      gistError: null
+    });
     this.gh
       .getGist(gistID)
       .read()
       .then(g => this.handleGist(g))
       .then(() => {
-        this.setState({ gistError: null });
         const newPath = `/functions/playground/${gistID}`;
         if (history.location.pathname.endsWith(newPath)) return;
         history.push(newPath); // ... -> playground/:id
@@ -119,6 +130,20 @@ func main() {
         this.setState({ gistError: err });
         console.warn(`Failed load of gist ${gistID}:`, err);
       });
+  };
+
+  loadUser = () => {
+    this.gh
+      .getUser()
+      .getProfile()
+      .then(u => this.handleUser(u))
+      .catch(err => {
+        console.warn(`Failed load of user:`, err);
+      });
+  };
+
+  handleUser = ({ data }) => {
+    this.setState({ currentUser: data.login });
   };
 
   setToken = token => {
@@ -148,6 +173,7 @@ func main() {
     )
       .then(resp => {
         this.setToken(resp.access_token);
+        this.loadUser();
         this.loadGist();
         this.loadRelatedGists();
       })
@@ -229,10 +255,74 @@ func main() {
     if (!data || !data.files) return;
     let code = "";
     for (let info of Object.values(data.files)) {
-      code += `// ${info.filename}\n${info.content}`;
+      const filePrefix = `// file=${info.filename}\n`;
+      if (!info.content.startsWith(filePrefix)) {
+        code += filePrefix;
+      }
+      code += info.content;
     }
     if (code === "") return;
-    this.setState({ code });
+    this.setState({ code, gist: data });
+  };
+
+  updateGist = () => {
+    const { gist, code } = this.state;
+    this.setState({ gistError: null });
+    // TODO allow saving non-owned gists via forking
+
+    // parse file names from comments
+    const filePrefixRe = RegExp("// file=(.+)");
+    const files = {};
+    for (let fileName of Object.keys(gist.files)) {
+      files[fileName] = null;
+    }
+    const lines = code.split("\n");
+    let fileName = "prog.go";
+    for (let line of lines) {
+      let [, lFileName] = line.match(filePrefixRe) || [];
+      if (lFileName) {
+        fileName = lFileName;
+        continue;
+      }
+      if (!files[fileName]) {
+        files[fileName] = { content: "" };
+      }
+      files[fileName].content += line + "\n";
+    }
+
+    let anyChanges = false;
+    for (let fileName of Object.keys(files)) {
+      if (files[fileName] === null) continue;
+      // trim newlines
+      files[fileName].content = files[fileName].content.trim() + "\n";
+      if (
+        gist.files[fileName] &&
+        gist.files[fileName].content === files[fileName].content
+      ) {
+        continue;
+      }
+      anyChanges = true;
+    }
+
+    // deleted or added a file
+    if (!anyChanges) {
+      if (Object.keys(files).length !== Object.keys(gist.files).length) {
+        anyChanges = true;
+      }
+    }
+
+    if (!anyChanges) return;
+
+    this.gh
+      .getGist(gist.id)
+      .update({ files })
+      .then(g => {
+        this.handleGist(g);
+      })
+      .catch(err => {
+        this.setState({ gistError: err });
+        console.warn("Failed to update gist:", err);
+      });
   };
 
   shareGist = () => {
@@ -241,6 +331,7 @@ func main() {
       history
     } = this.props;
     let gist = this.gh.getGist();
+    this.setState({ gistError: null });
     gist
       .create({
         public: false,
@@ -254,7 +345,6 @@ func main() {
       })
       .then(() => gist.read())
       .then(g => {
-        this.setState({ gistError: null });
         this.handleGist(g);
         history.push(`${url}/${g.data.id}`); // playground -> playground/:id
       })
@@ -267,22 +357,34 @@ func main() {
   resetCode = () => {
     const {
       match: {
-        url,
         params: { id }
-      },
-      history
+      }
     } = this.props;
     this.decorateMonacoErrors([]);
+
+    if (id) {
+      this.loadGist();
+    } else {
+      this.clearGist();
+    }
+  };
+
+  clearGist = () => {
+    const {
+      match: { url },
+      history
+    } = this.props;
     this.setState({
+      code: this.constructor.starterCode[this.state.language.editor],
       events: null,
       errors: null,
-      code: this.constructor.starterCode[this.state.language.editor]
+      gistError: null,
+      gist: null
     });
-    if (id) {
-      let urlParts = url.replace(/\/+$/, "").split("/");
-      urlParts.pop();
-      history.push(urlParts.join("/")); // playground/:id -> playground
-    }
+    if (history.location.pathname.endsWith("/playground")) return;
+    let urlParts = url.replace(/\/+$/, "").split("/");
+    urlParts.pop();
+    history.push(urlParts.join("/")); // playground/:id -> playground
   };
 
   // https://microsoft.github.io/monaco-editor/playground.html#interacting-with-the-editor-line-and-inline-decorations
@@ -364,6 +466,8 @@ func main() {
   }
 
   componentWillReceiveProps(nextProps) {
+    // TODO reload gist if props.match.id changes (eg: back was pressed)
+
     // format changed, update code and errors
     let fetchWas = this.props.formatFetch;
     let fetchIs = nextProps.formatFetch;
@@ -431,7 +535,9 @@ func main() {
       bounds,
       token,
       gists,
-      gistError
+      gistError,
+      gist,
+      currentUser
     } = this.state;
     const {
       compileFetch,
@@ -447,6 +553,8 @@ func main() {
     const formatting = formatFetch && formatFetch.pending;
     const compiled = compileFetch && !compileFetch.pending;
     const formatted = formatFetch && !formatFetch.pending;
+
+    const isGistOwner = gist !== null && gist.owner.login === currentUser;
 
     let editorWidth = width;
     let editorHeight = height / 2;
@@ -505,7 +613,10 @@ func main() {
                   href={`https://gist.github.com/${id}`}
                 >
                   <FontAwesome name="github" /> Gist{" "}
-                  {gistError ? "Error" : String(id).substring(0, 10)}
+                  {gistError
+                    ? "Error"
+                    : String(id).substring(0, 6) +
+                      (gist ? `, rev ${gist.history.length}` : "")}
                 </a>
               </span>
             )}
@@ -522,6 +633,20 @@ func main() {
                   <FontAwesome name="github" /> Share
                 </Button>
               )}
+            {id &&
+              token != null &&
+              isGistOwner && (
+                <Button
+                  type="button"
+                  onClick={this.updateGist}
+                  outline
+                  color="primary"
+                  className="ml-2"
+                  disabled={compiling || formatting || codeIsDefault}
+                >
+                  <FontAwesome name="github" /> Save
+                </Button>
+              )}
             {token != null && (
               <div style={{ display: "inline-block" }} className="ml-2">
                 <Input
@@ -530,14 +655,30 @@ func main() {
                   style={{ paddingTop: "1px" }}
                   value={id}
                 >
-                  <option>Select a Gist</option>
+                  <option value={""}>-- select gist to load --</option>
+                  {!isGistOwner &&
+                    gist !== null && (
+                      <option
+                        key={gist.id}
+                        value={gist.id}
+                        title={gist.description}
+                        disabled
+                      >
+                        {(gist.description.length > 20
+                          ? gist.description.substring(0, 20) + "..."
+                          : gist.description) + ` (by ${gist.owner.login})`}
+                      </option>
+                    )}
                   {gists.map(g => (
                     <option
                       key={g.id}
                       value={g.id}
+                      title={g.description}
                       disabled={id && String(id) === String(g.id)}
                     >
-                      {g.description.substring(0, 20)}...
+                      {g.description.length > 20
+                        ? g.description.substring(0, 20) + "..."
+                        : g.description}
                     </option>
                   ))}
                 </Input>
