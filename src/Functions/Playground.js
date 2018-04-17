@@ -692,7 +692,7 @@ func main() {
                   outline
                   color="primary"
                   className="ml-2"
-                  disabled={compiling || formatting || codeIsDefault}
+                  disabled={compiling || formatting}
                 >
                   <FontAwesome name="github" /> Login to Share
                 </Button>
