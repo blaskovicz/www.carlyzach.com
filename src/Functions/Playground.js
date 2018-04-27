@@ -75,19 +75,24 @@ func asyncHello() {
 
   constructor(props) {
     super(props);
+    const {
+      match: {
+        params: { id }
+      }
+    } = props;
     this.updateWindowSize = this.updateWindowSize.bind(this);
     this.errorRanges = [];
     let editor = localStorage.getItem("editor");
     if (!editor || !this.constructor.langToFunction[editor]) {
       editor = this.constructor.starterEditor;
     } else {
-      console.log("Loaded code from localStorage");
+      console.log("Loaded editor from localStorage");
     }
     let code = localStorage.getItem("code");
-    if (!code) {
+    if (!code || id) {
       code = this.constructor.starterCode[editor];
     } else {
-      console.log("Loaded editor from localStorage");
+      console.log("Loaded code from localStorage");
       Gtag("event", "load", {
         event_category: "functions.playground",
         event_label: "code"
@@ -108,6 +113,8 @@ func asyncHello() {
       language: { editor, function: func },
       code
     };
+
+    // cascading load of gist if in id
     this.loadAuth();
   }
 
@@ -145,7 +152,12 @@ func asyncHello() {
     } else {
       gistID = e.target.value;
       if (gistID === "") {
+        // de-selected the gist, so reset code back to what it was
         this.clearGist();
+        const code = localStorage.getItem("code");
+        if (code) {
+          this.setState({ code });
+        }
         return;
       }
     }
@@ -285,7 +297,7 @@ func asyncHello() {
     return code === this.constructor.starterCode[editor];
   };
 
-  onUnload = () => {
+  localSave = () => {
     const {
       code,
       language: { editor }
@@ -307,6 +319,18 @@ func asyncHello() {
       localStorage.removeItem("editor");
     }
   };
+  onUnload = () => {
+    const {
+      match: {
+        params: { id }
+      }
+    } = this.props;
+
+    // if we have a gist, we're using remote saves.
+    // local saves are reserved for no gist.
+    if (id) return;
+    this.localSave();
+  };
 
   startLoginFlow = () => {
     const {
@@ -322,9 +346,7 @@ func asyncHello() {
   };
 
   handleGist = ({ data }) => {
-    // TODO prompt here since we can effectively overwrite our code if we
-    // refresh the page 2x on a gist
-    this.onUnload(); // save whatever we had
+    this.onUnload();
 
     if (!data || !data.files) return;
     let code = "";
