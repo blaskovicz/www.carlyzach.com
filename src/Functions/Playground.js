@@ -7,6 +7,7 @@ import FontAwesome from "react-fontawesome";
 import GitHub from "github-api";
 import { withRouter } from "react-router-dom";
 import connect from "./API";
+import { Gtag } from "../GA";
 import "./Playground.css";
 
 class PlaygroundFunction extends React.Component {
@@ -21,12 +22,13 @@ class PlaygroundFunction extends React.Component {
     go: `package main
 
 import (
-    "fmt"
+  "fmt"
 )
 
 func main() {
-    fmt.Println("Hello, carlyzach playground")
+  fmt.Println("Hello, carlyzach playground")
 }
+
 `
   };
 
@@ -64,13 +66,17 @@ func main() {
       code = this.constructor.starterCode[editor];
     } else {
       console.log("Loaded editor from localStorage");
+      Gtag("event", "load", {
+        event_category: "functions.playground",
+        event_label: "code"
+      });
     }
     const func = this.constructor.langToFunction[editor];
     this.state = {
       token: null,
       width: 0,
       height: 0,
-      bounds: null,
+      offsetLeft: 0,
       events: null,
       errors: null,
       gistError: null,
@@ -87,9 +93,19 @@ func main() {
     this.gh
       .getUser()
       .listGists()
-      .then(g => this.handleGistList(g))
+      .then(g => {
+        Gtag("event", "load", {
+          event_category: "functions.playground",
+          event_label: "related-gists"
+        });
+        this.handleGistList(g);
+      })
       .catch(err => {
         console.warn("Failed load of related gists:", err);
+        Gtag("event", "exception", {
+          description: err,
+          fatal: false
+        });
       });
   };
 
@@ -122,6 +138,10 @@ func main() {
       .read()
       .then(g => this.handleGist(g))
       .then(() => {
+        Gtag("event", "load", {
+          event_category: "functions.playground",
+          event_label: `gist/${gistID}`
+        });
         const newPath = `/functions/playground/${gistID}`;
         if (history.location.pathname.endsWith(newPath)) return;
         history.push(newPath); // ... -> playground/:id
@@ -129,6 +149,10 @@ func main() {
       .catch(err => {
         this.setState({ gistError: err });
         console.warn(`Failed load of gist ${gistID}:`, err);
+        Gtag("event", "exception", {
+          description: err,
+          fatal: false
+        });
       });
   };
 
@@ -136,9 +160,19 @@ func main() {
     this.gh
       .getUser()
       .getProfile()
-      .then(u => this.handleUser(u))
+      .then(u => {
+        Gtag("event", "load", {
+          event_category: "functions.playground",
+          event_label: `user/${u.login}`
+        });
+        this.handleUser(u);
+      })
       .catch(err => {
         console.warn(`Failed load of user:`, err);
+        Gtag("event", "exception", {
+          description: err,
+          fatal: false
+        });
       });
   };
 
@@ -172,6 +206,10 @@ func main() {
         })
     )
       .then(resp => {
+        Gtag("event", "load", {
+          event_category: "functions.playground",
+          event_label: `oauth-token`
+        });
         this.setToken(resp.access_token);
         this.loadUser();
         this.loadGist();
@@ -180,6 +218,10 @@ func main() {
       .catch(err => {
         console.warn("Failed to load token:", err);
         this.setToken(null);
+        Gtag("event", "exception", {
+          description: err,
+          fatal: false
+        });
       });
   };
 
@@ -195,15 +237,21 @@ func main() {
   }
 
   updateWindowSize() {
+    const appElem = document.getElementById("App");
+    if (appElem === null) return;
+    const { paddingLeft } = window.getComputedStyle(appElem) || {};
+    const { width } = appElem.getBoundingClientRect();
+    const height = window.innerHeight;
     if (
-      window.innerHeight === this.state.height &&
-      window.innerWidth === this.state.width
+      height === this.state.height &&
+      width === this.state.width &&
+      paddingLeft === this.state.offsetLeft
     )
       return;
     this.setState({
-      width: window.innerWidth,
-      height: window.innerHeight,
-      bounds: this.getBounds()
+      width,
+      height,
+      offsetLeft: paddingLeft
     });
   }
 
@@ -222,6 +270,10 @@ func main() {
     } = this.state;
     if (!this.isDefaultCode()) {
       console.log("Saving code to localStorage");
+      Gtag("event", "save", {
+        event_category: "functions.playground",
+        event_label: `code`
+      });
       localStorage.setItem("code", code);
     } else {
       localStorage.removeItem("code");
@@ -317,11 +369,19 @@ func main() {
       .getGist(gist.id)
       .update({ files })
       .then(g => {
+        Gtag("event", "update", {
+          event_category: "functions.playground",
+          event_label: `gist/${gist.id}`
+        });
         this.handleGist(g);
       })
       .catch(err => {
         this.setState({ gistError: err });
         console.warn("Failed to update gist:", err);
+        Gtag("event", "exception", {
+          description: err,
+          fatal: false
+        });
       });
   };
 
@@ -345,23 +405,34 @@ func main() {
       })
       .then(() => gist.read())
       .then(g => {
+        Gtag("event", "create", {
+          event_category: "functions.playground",
+          event_label: `gist/${g.data.id}`
+        });
         this.handleGist(g);
         history.push(`${url}/${g.data.id}`); // playground -> playground/:id
       })
       .catch(err => {
         this.setState({ gistError: err });
         console.warn("Failed to load gist after share:", err);
+        Gtag("event", "exception", {
+          description: err,
+          fatal: false
+        });
       });
   };
 
   resetCode = () => {
+    Gtag("event", "reset", {
+      event_category: "functions.playground",
+      event_label: this.state.language.function
+    });
     const {
       match: {
         params: { id }
       }
     } = this.props;
     this.decorateMonacoErrors([]);
-
     if (id) {
       this.loadGist();
     } else {
@@ -370,6 +441,10 @@ func main() {
   };
 
   clearGist = () => {
+    Gtag("event", "clear", {
+      event_category: "functions.playground",
+      event_label: this.state.language.function
+    });
     const {
       match: { url },
       history
@@ -438,32 +513,22 @@ func main() {
   };
 
   formatCode = () => {
+    Gtag("event", "format", {
+      event_category: "functions.playground",
+      event_label: this.state.language.function
+    });
     this.setState({ errors: [] });
     this.props.format(this.state);
   };
 
   runCode = () => {
+    Gtag("event", "compile", {
+      event_category: "functions.playground",
+      event_label: this.state.language.function
+    });
     this.setState({ errors: [] });
     this.props.compile(this.state);
   };
-
-  static noPx(px) {
-    return +px.replace("px", "");
-  }
-
-  getBounds() {
-    const appElement = document.getElementById("App");
-    if (!appElement) return null;
-    const s = window.getComputedStyle(appElement);
-    return [
-      this.constructor.noPx(s.paddingTop) + this.constructor.noPx(s.marginTop), // top,
-      this.constructor.noPx(s.paddingRight) +
-        this.constructor.noPx(s.marginRight), // right,
-      this.constructor.noPx(s.paddingBottom) +
-        this.constructor.noPx(s.marginBottom), // bottom,
-      this.constructor.noPx(s.paddingLeft) + this.constructor.noPx(s.marginLeft) // left,
-    ];
-  }
 
   componentWillReceiveProps(nextProps) {
     // TODO reload gist if props.match.id changes (eg: back was pressed)
@@ -532,9 +597,9 @@ func main() {
       errors,
       width,
       height,
-      bounds,
       token,
       gists,
+      offsetLeft,
       gistError,
       gist,
       currentUser
@@ -556,15 +621,11 @@ func main() {
 
     const isGistOwner = gist !== null && gist.owner.login === currentUser;
 
-    let editorWidth = width;
-    let editorHeight = height / 2;
-    // 0 top, 1 right, 2 bottom, 3 left
-    if (bounds !== null) {
-      editorWidth = editorWidth - bounds[1] - bounds[3];
-    }
+    const editorWidth = width;
+    const editorHeight = height * 0.5;
 
     return (
-      <div>
+      <div style={{ left: `-${offsetLeft}`, position: "relative" }}>
         <div className="row mb-1">
           <div className="col-2">
             <Input type="select" disabled style={{ paddingTop: "1px" }}>

@@ -3,6 +3,7 @@ import { Button, Form, FormGroup, Input, Label } from "reactstrap";
 import { PropTypes } from "prop-types";
 import { PromiseState } from "react-refetch";
 import connect from "./API";
+import { Gtag } from "../GA";
 
 class MarkdownFunction extends React.Component {
   static propTypes = {
@@ -17,6 +18,10 @@ class MarkdownFunction extends React.Component {
     };
   }
   convert = () => {
+    Gtag("event", "convert", {
+      event_category: "functions.markdown",
+      event_label: "markdown"
+    });
     this.props.convert(this.state);
   };
   handleChange = e => {

@@ -3,6 +3,7 @@ import { Button, Form, FormGroup, Input, Label } from "reactstrap";
 import { PropTypes } from "prop-types";
 import { PromiseState } from "react-refetch";
 import connect from "./API";
+import { Gtag } from "../GA";
 
 class RmbToUsdFunction extends React.Component {
   static propTypes = {
@@ -19,6 +20,10 @@ class RmbToUsdFunction extends React.Component {
     };
   }
   convert = () => {
+    Gtag("event", "convert", {
+      event_category: "functions.rmb-to-usd",
+      event_label: this.state.from
+    });
     this.props.convert(this.state);
   };
   handleChange = e => {

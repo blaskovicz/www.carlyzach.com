@@ -14,12 +14,14 @@ import "./App.css";
 // routes
 import Home from "./Home";
 import Functions from "./Functions";
+import GA from "./GA";
 
 class App extends Component {
   render() {
     return (
       <Router>
         <div>
+          <GA />
           <header>
             <nav className="navbar navbar-expand-lg navbar-light bg-light">
               <Link to="/" className="navbar-brand">
