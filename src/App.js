@@ -1,4 +1,6 @@
 import React, { Component } from "react";
+// import AdSense from "react-adsense";
+
 import {
   BrowserRouter as Router,
   //HashRouter as Router,
@@ -63,6 +65,13 @@ class App extends Component {
               <Route path="/functions" component={Functions} />
               <Redirect to="/" />
             </Switch>
+            {/* <AdSense.Google
+              client="ca-pub-5130487653685158"
+              slot="7806394673"
+              style={{ display: "block" }}
+              layout="in-article"
+              format="fluid"
+            /> */}
           </main>
           <footer className="footer">
             <div className="container">

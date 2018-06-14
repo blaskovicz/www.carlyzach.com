@@ -9,6 +9,7 @@
     "jquery": "3.2",
     "popper.js": "^1.12.9",
     "react": "^16.2.0",
+    "react-adsense": "^0.0.5",
     "react-dom": "^16.2.0",
     "react-fontawesome": "^1.6.1",
     "react-monaco-editor": "0.14",
