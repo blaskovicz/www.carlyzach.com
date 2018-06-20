@@ -3,18 +3,40 @@ import Particles from "react-particles-js";
 export default function() {
   return (
     <div className="text-center">
+      <h2
+        style={{
+          position: "absolute",
+          left: 0,
+          zIndex: 1,
+          width: "50%",
+          padding: "5px",
+          border: "2px solid rgba(255, 255, 255, 0.28)",
+          borderRadius: "25px",
+          lineHeight: "15pt",
+          fontSize: "17pt",
+          color: "#fff",
+          margin: "10px",
+          background: "#00000054"
+        }}
+      >
+        Welcome.{" "}
+        <small>
+          Check out some of my other pages to access useful tools like a code
+          sandbox, markdown converter, and more.
+        </small>
+      </h2>
       <Particles
         params={{
           particles: {
             number: {
-              value: 150,
+              value: 200,
               density: {
                 enable: true,
-                value_area: 868.0624057955
+                value_area: 1262.6362266116362
               }
             },
             color: {
-              value: "#000"
+              value: "#0957e6"
             },
             shape: {
               type: "circle",
@@ -24,11 +46,16 @@ export default function() {
               },
               polygon: {
                 nb_sides: 5
+              },
+              image: {
+                src: "img/github.svg",
+                width: 100,
+                height: 100
               }
             },
             opacity: {
               value: 0.5,
-              random: true,
+              random: false,
               anim: {
                 enable: false,
                 speed: 1,
@@ -48,22 +75,22 @@ export default function() {
             },
             line_linked: {
               enable: true,
-              distance: 150,
-              color: "#000",
-              opacity: 0.4,
-              width: 1
+              distance: 110.48066982851817,
+              color: "#070906",
+              opacity: 0.3787908679834909,
+              width: 1.1048066982851816
             },
             move: {
               enable: true,
-              speed: 5,
-              direction: "none",
-              random: false,
+              speed: 6,
+              direction: "top-right",
+              random: true,
               straight: false,
               out_mode: "out",
               bounce: false,
               attract: {
                 enable: false,
-                rotateX: 600,
+                rotateX: 1262.6362266116362,
                 rotateY: 1200
               }
             }
@@ -72,14 +99,14 @@ export default function() {
             detect_on: "canvas",
             events: {
               onhover: {
-                enable: false,
-                mode: "grab"
+                enable: true,
+                mode: "repulse"
               },
               onclick: {
-                enable: false,
+                enable: true,
                 mode: "push"
               },
-              resize: false
+              resize: true
             },
             modes: {
               grab: {
@@ -110,26 +137,16 @@ export default function() {
           retina_detect: true
         }}
         style={{
+          backgroundColor: "rgb(0, 0, 0)",
+          backgroundImage: "url(//www.carlyzach.com/cats.jpg)",
+          backgroundSize: "cover",
+          backgroundRepeat: "no-repeat",
+          backgroundPosition: "50% 50%",
           position: "absolute",
+          left: 0,
+          // filter: "grayscale(100%)",
           width: "100%",
-          height: "100%",
-          maxHeight: "600px",
-          zIndex: 1,
-          left: 0
-        }}
-      />
-      <img
-        src="/cats.jpg"
-        onError={e => {
-          e.target.src = "//www.carlyzach.com/cats.jpg";
-        }}
-        className="img-fluid rounded"
-        alt="cat pic"
-        style={{
-          maxHeight: "600px",
-          border: "1px solid #ded8d8",
-          WebkitFilter: "grayscale(100%)",
-          filter: "grayscale(100%)"
+          height: "100%"
         }}
       />
     </div>

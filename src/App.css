@@ -25,5 +25,5 @@ html {
 main.container {
   /* Margin bottom by footer height */
   margin-bottom: 100px;
-  padding: 20px 15px 0;
+  padding: 0px 15px 0;
 }
