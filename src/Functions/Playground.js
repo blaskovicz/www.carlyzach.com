@@ -15,10 +15,18 @@ class PlaygroundFunction extends React.Component {
     selectOnLineNumbers: true
   };
   static langToFunction = {
-    go: "golang"
+    go: "golang",
+    javascript: "nodejs"
   };
-  static starterEditor = "go";
+  static starterEditor = "javascript";
   static starterCode = {
+    javascript: `function main() {
+  const message = "👋 hello 🌎 world";
+  console.log(message);
+}
+
+main();
+`,
     go: `package main
 
 import (
@@ -361,6 +369,17 @@ func asyncHello() {
     this.setState({ code, gist: data });
   };
 
+  editorPrefix() {
+    switch (this.state.language.editor) {
+      case "go":
+        return "go";
+      case "javascript":
+        return "js";
+      default:
+        return "txt";
+    }
+  }
+
   updateGist = () => {
     const { gist, code } = this.state;
     this.setState({ gistError: null });
@@ -373,7 +392,7 @@ func asyncHello() {
       files[fileName] = null;
     }
     const lines = code.split("\n");
-    let fileName = "prog.go";
+    let fileName = `prog.${this.editorPrefix()}`;
     for (let line of lines) {
       let [, lFileName] = line.match(filePrefixRe) || [];
       if (lFileName) {
@@ -442,7 +461,7 @@ func asyncHello() {
         description:
           "Created on https://www.carlyzach.com/functions/playground",
         files: {
-          "prog.go": {
+          [`prog.${this.editorPrefix()}`]: {
             content: this.state.code
           }
         }
@@ -534,13 +553,20 @@ func asyncHello() {
 
   // one error may span multiple lines, so return lines in an array
   lineHighlight(error) {
-    if (this.state.language.editor !== "go") return null;
-    const regex = /prog.go:([0-9]+)/g;
-    let r = regex.exec(error);
     const lines = [];
-    while (r) {
-      lines.push(+r[1]);
-      r = regex.exec(error);
+    switch (this.state.language.editor) {
+      case "go":
+        const regex = /prog.go:([0-9]+)/g;
+        let r = regex.exec(error);
+        while (r) {
+          lines.push(+r[1]);
+          r = regex.exec(error);
+        }
+        break;
+      default:
+        if (error) {
+          lines.push(1);
+        }
     }
     return lines.length === 0 ? null : lines;
   }
@@ -554,6 +580,13 @@ func asyncHello() {
 
   onChange = (code, e) => {
     this.setState({ code });
+  };
+
+  setLanguage = e => {
+    const editor = e.target.value;
+    this.setState({
+      language: { editor, function: this.constructor.langToFunction[editor] }
+    });
   };
 
   formatCode = () => {
@@ -672,8 +705,14 @@ func asyncHello() {
       <div style={{ left: `-${offsetLeft}`, position: "relative" }}>
         <div className="row mb-1">
           <div className="col-2">
-            <Input type="select" disabled style={{ paddingTop: "1px" }}>
-              <option>Golang</option>
+            <Input
+              type="select"
+              style={{ paddingTop: "1px" }}
+              onChange={this.setLanguage}
+              value={language.editor}
+            >
+              <option value="go">Golang (1.9)</option>
+              <option value="javascript">NodeJS (8)</option>
             </Input>
           </div>
           <div className="col-9">
@@ -834,8 +873,8 @@ func asyncHello() {
               {errors &&
                 errors.length !== 0 && (
                   <div>
-                    {errors.map(e => (
-                      <div className="error" key={e}>
+                    {errors.map((e, i) => (
+                      <div className="error" key={i}>
                         {e}
                       </div>
                     ))}
