@@ -6,9 +6,10 @@ import { PromiseState } from "react-refetch";
 import FontAwesome from "react-fontawesome";
 import GitHub from "github-api";
 import { withRouter } from "react-router-dom";
-import connect from "./API";
-import { Gtag } from "../GA";
+import connect from "../API";
+import { Gtag } from "../../GA";
 import "./Playground.css";
+import { starterCode } from "./starter-code";
 
 class PlaygroundFunction extends React.Component {
   static options = {
@@ -19,48 +20,6 @@ class PlaygroundFunction extends React.Component {
     javascript: "nodejs"
   };
   static starterEditor = "javascript";
-  static starterCode = {
-    javascript: `function main() {
-  const message = "👋 hello 🌎 world";
-  console.log(message);
-}
-
-main();
-`,
-    go: `package main
-
-import (
-	"fmt"
-	"sync"
-)
-
-func main() {
-	asyncHello()
-}
-
-func asyncHello() {
-	results := make(chan string, 2)
-	var waiter sync.WaitGroup
-	waiter.Add(1)
-	go func() {
-		results <- "🌎 world "
-		waiter.Done()
-	}()
-	waiter.Add(1)
-	go func() {
-		results <- "👋 hello "
-		waiter.Done()
-	}()
-
-	waiter.Wait()
-	close(results)
-
-	for word := range results {
-		fmt.Printf("%s", word)
-	}
-}
-`
-  };
 
   static requireConfig = {
     url:
@@ -98,7 +57,7 @@ func asyncHello() {
     }
     let code = localStorage.getItem("code");
     if (!code || id) {
-      code = this.constructor.starterCode[editor];
+      code = starterCode[editor];
     } else {
       console.log("Loaded code from localStorage");
       Gtag("event", "load", {
@@ -302,7 +261,7 @@ func asyncHello() {
       code,
       language: { editor }
     } = this.state;
-    return code === this.constructor.starterCode[editor];
+    return code === starterCode[editor];
   };
 
   localSave = () => {
@@ -513,7 +472,7 @@ func asyncHello() {
       history
     } = this.props;
     this.setState({
-      code: this.constructor.starterCode[this.state.language.editor],
+      code: starterCode[this.state.language.editor],
       events: null,
       errors: null,
       gistError: null,

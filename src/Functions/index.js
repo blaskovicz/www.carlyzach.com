@@ -1,7 +1,7 @@
 import React from "react";
 import Markdown from "./Markdown";
 import RmbToUsd from "./RmbToUsd";
-import Playground from "./Playground";
+import Playground from "./playground/Playground";
 import { Switch, Route, Link } from "react-router-dom";
 import PropTypes from "prop-types";
 const Functions = ({ match: { url } }) => {
