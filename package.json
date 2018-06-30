@@ -8,6 +8,7 @@
     "github-api": "^3.0.0",
     "jquery": "3.2",
     "popper.js": "^1.12.9",
+    "query-string": "^6.1.0",
     "react": "^16.2.0",
     "react-adsense": "^0.0.5",
     "react-dom": "^16.2.0",

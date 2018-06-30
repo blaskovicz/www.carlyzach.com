@@ -8,6 +8,7 @@ import GitHub from "github-api";
 import { withRouter } from "react-router-dom";
 import connect from "../API";
 import { Gtag } from "../../GA";
+import { parse } from "query-string";
 import "./Playground.css";
 import { starterCode } from "./starter-code";
 
@@ -37,7 +38,13 @@ class PlaygroundFunction extends React.Component {
     match: PropTypes.shape({
       params: PropTypes.shape({ id: PropTypes.string }),
       url: PropTypes.string.isRequired
-    })
+    }),
+    location: PropTypes.shape({
+      search: PropTypes.string.isRequired
+    }),
+    history: PropTypes.shape({
+      push: PropTypes.func.isRequired
+    }).isRequired
   };
 
   constructor(props) {
@@ -45,16 +52,28 @@ class PlaygroundFunction extends React.Component {
     const {
       match: {
         params: { id }
-      }
+      },
+      history
     } = props;
     this.updateWindowSize = this.updateWindowSize.bind(this);
     this.errorRanges = [];
-    let editor = localStorage.getItem("editor");
+    let editor = this.param("language");
     if (!editor || !this.constructor.langToFunction[editor]) {
-      editor = this.constructor.starterEditor;
+      editor = localStorage.getItem("editor");
+      if (!editor || !this.constructor.langToFunction[editor]) {
+        editor = this.constructor.starterEditor;
+        console.log(`Editor set to default ${editor}`);
+      } else {
+        console.log(`Loaded editor ${editor} from localStorage`);
+      }
     } else {
-      console.log("Loaded editor from localStorage");
+      console.log(`Loaded editor ${editor} from queryParams`);
     }
+
+    if (this.param("language") !== editor) {
+      history.push(`?language=${editor}`); // ?language=go
+    }
+
     let code = localStorage.getItem("code");
     if (!code || id) {
       code = starterCode[editor];
@@ -85,6 +104,10 @@ class PlaygroundFunction extends React.Component {
     this.loadAuth();
   }
 
+  param = param => {
+    return parse(this.props.location.search)[param];
+  };
+
   loadRelatedGists = () => {
     this.gh
       .getUser()
@@ -112,6 +135,9 @@ class PlaygroundFunction extends React.Component {
       },
       history
     } = this.props;
+    const {
+      language: { editor }
+    } = this.state;
     let gistID;
     if (e === undefined || e.target.value === undefined) {
       if (id === undefined) return;
@@ -145,7 +171,7 @@ class PlaygroundFunction extends React.Component {
         });
         const newPath = `/functions/playground/${gistID}`;
         if (history.location.pathname.endsWith(newPath)) return;
-        history.push(newPath); // ... -> playground/:id
+        history.push(`${newPath}?language=${editor}`); // ... -> playground/:id?language=go
       })
       .catch(err => {
         this.setState({ gistError: err });
@@ -412,16 +438,19 @@ class PlaygroundFunction extends React.Component {
       match: { url },
       history
     } = this.props;
+    const {
+      language: { editor },
+      code
+    } = this.state;
     let gist = this.gh.getGist();
     this.setState({ gistError: null });
     gist
       .create({
         public: false,
-        description:
-          "Created on https://www.carlyzach.com/functions/playground",
+        description: `Created on https://www.carlyzach.com/functions/playground?language=${editor}`,
         files: {
           [`prog.${this.editorPrefix()}`]: {
-            content: this.state.code
+            content: code
           }
         }
       })
@@ -432,7 +461,7 @@ class PlaygroundFunction extends React.Component {
           event_label: `gist/${g.data.id}`
         });
         this.handleGist(g);
-        history.push(`${url}/${g.data.id}`); // playground -> playground/:id
+        history.push(`${url}/${g.data.id}?language=${editor}`); // playground -> playground/:id
       })
       .catch(err => {
         this.setState({ gistError: err });
@@ -463,16 +492,19 @@ class PlaygroundFunction extends React.Component {
   };
 
   clearGist = () => {
-    Gtag("event", "clear", {
-      event_category: "functions.playground",
-      event_label: this.state.language.function
-    });
     const {
       match: { url },
       history
     } = this.props;
+    const {
+      language: { editor }
+    } = this.state;
+    Gtag("event", "clear", {
+      event_category: "functions.playground",
+      event_label: this.state.language.function
+    });
     this.setState({
-      code: starterCode[this.state.language.editor],
+      code: starterCode[editor],
       events: null,
       errors: null,
       gistError: null,
@@ -481,7 +513,7 @@ class PlaygroundFunction extends React.Component {
     if (history.location.pathname.endsWith("/playground")) return;
     let urlParts = url.replace(/\/+$/, "").split("/");
     urlParts.pop();
-    history.push(urlParts.join("/")); // playground/:id -> playground
+    history.push(`${urlParts.join("/")}?language=${editor}`); // playground/:id -> playground
   };
 
   // https://microsoft.github.io/monaco-editor/playground.html#interacting-with-the-editor-line-and-inline-decorations
@@ -542,10 +574,16 @@ class PlaygroundFunction extends React.Component {
   };
 
   setLanguage = e => {
+    const { history } = this.props;
     const editor = e.target.value;
-    this.setState({
+    const newState = {
       language: { editor, function: this.constructor.langToFunction[editor] }
-    });
+    };
+    if (this.isDefaultCode()) {
+      newState.code = starterCode[editor];
+    }
+    this.setState(newState);
+    history.push(`?language=${editor}`); // ?language=go
   };
 
   formatCode = () => {
