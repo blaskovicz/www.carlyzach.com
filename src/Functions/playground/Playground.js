@@ -340,7 +340,7 @@ class PlaygroundFunction extends React.Component {
 
   handleGist = ({ data }) => {
     this.onUnload();
-
+    this.annotateGist(data);
     if (!data || !data.files) return;
     let code = "";
     for (let info of Object.values(data.files)) {
@@ -433,6 +433,40 @@ class PlaygroundFunction extends React.Component {
       });
   };
 
+  annotateGist = data => {
+    if (!this.gh || this.state.token === null || !data || !data.id) return;
+    const {
+      language: { editor }
+    } = this.state;
+    const playgroundLink = `https://www.carlyzach.com/functions/playground/${
+      data.id
+    }?language=${editor}`;
+    const commentBody = `**[:computer: Edit](${playgroundLink})** or **[:play_or_pause_button: run](${playgroundLink})** this Gist on the **[www.CarlyZach.com code playground :computer:](${playgroundLink})**`;
+    const gistID = data.id;
+    const gist = this.gh.getGist(gistID);
+    gist
+      .listComments()
+      .then(({ data }) => {
+        for (let comment of data) {
+          if (comment.body.includes(playgroundLink)) {
+            return;
+          }
+        }
+        return gist.createComment(commentBody);
+      })
+      .then(({ data } = { data: null }) => {
+        if (!data) return;
+        console.log(`Successfully annotated gist ${gistID}:`, data);
+      })
+      .catch(err => {
+        console.warn(`Failed to annotate gist ${gistID}:`, err);
+        Gtag("event", "exception", {
+          description: err,
+          fatal: false
+        });
+      });
+  };
+
   shareGist = () => {
     const {
       match: { url },
@@ -447,14 +481,17 @@ class PlaygroundFunction extends React.Component {
     gist
       .create({
         public: false,
-        description: `Created on https://www.carlyzach.com/functions/playground?language=${editor}`,
+        description: `:writing_hand: Created on the www.CarlyZach.com code playground :computer:`,
         files: {
           [`prog.${this.editorPrefix()}`]: {
             content: code
           }
         }
       })
-      .then(() => gist.read())
+      .then(({ data }) => {
+        console.log(`Successfully created gist:`, data);
+        return gist.read();
+      })
       .then(g => {
         Gtag("event", "create", {
           event_category: "functions.playground",
