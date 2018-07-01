@@ -8,7 +8,7 @@ import GitHub from "github-api";
 import { withRouter } from "react-router-dom";
 import connect from "../API";
 import { Gtag } from "../../GA";
-import { parse } from "query-string";
+import { parse } from "querystring";
 import "./Playground.css";
 import { starterCode } from "./starter-code";
 
@@ -105,7 +105,13 @@ class PlaygroundFunction extends React.Component {
   }
 
   param = param => {
-    return parse(this.props.location.search)[param];
+    let {
+      location: { search }
+    } = this.props;
+    if (search && search[0] === "?") {
+      search = search.substring(1);
+    }
+    return parse(search)[param];
   };
 
   loadRelatedGists = () => {
