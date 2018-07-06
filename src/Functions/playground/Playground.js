@@ -751,7 +751,7 @@ class PlaygroundFunction extends React.Component {
               onChange={this.setLanguage}
               value={language.editor}
             >
-              <option value="go">Golang (1.9)</option>
+              <option value="go">Golang (1.10)</option>
               <option value="javascript">NodeJS (8)</option>
             </Input>
           </div>
