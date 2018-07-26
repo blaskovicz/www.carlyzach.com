@@ -214,7 +214,7 @@ class PlaygroundFunction extends React.Component {
   };
 
   setToken = token => {
-    if (token === "") token = null;
+    if (!token) token = null;
     this.gh = new GitHub({ token });
     this.setState({ token });
   };
@@ -251,6 +251,7 @@ class PlaygroundFunction extends React.Component {
       .catch(err => {
         console.warn("Failed to load token:", err);
         this.setToken(null);
+        this.loadGist();
         Gtag("event", "exception", {
           description: err,
           fatal: false
@@ -868,19 +869,18 @@ class PlaygroundFunction extends React.Component {
                 </Input>
               </div>
             )}
-            {!id &&
-              token == null && (
-                <Button
-                  type="button"
-                  onClick={this.startLoginFlow}
-                  outline
-                  color="primary"
-                  className="ml-2"
-                  disabled={compiling || formatting}
-                >
-                  <FontAwesome name="github" /> Login to Share
-                </Button>
-              )}
+            {token == null && (
+              <Button
+                type="button"
+                onClick={this.startLoginFlow}
+                outline
+                color="primary"
+                className="ml-2"
+                disabled={compiling || formatting}
+              >
+                <FontAwesome name="github" /> Login{!id && " to share"}
+              </Button>
+            )}
             {(compiling || formatting) && (
               <FontAwesome className="ml-2" name="spinner" spin />
             )}
