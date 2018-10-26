@@ -1,11 +1,20 @@
 export const starterCode = {
+  typescript: `async function main(): Promise<void> {
+  const message: string = "👋 hello 🌎 world";
+
+  console.log(message);
+}
+  
+(async () => {
+  await main();
+})();`,
   javascript: `function main() {
   const message = "👋 hello 🌎 world";
   console.log(message);
 }
 
-main();
-`,
+main();`,
+
   go: `package main
 
 import (

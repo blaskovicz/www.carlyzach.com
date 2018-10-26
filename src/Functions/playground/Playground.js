@@ -18,7 +18,8 @@ class PlaygroundFunction extends React.Component {
   };
   static langToFunction = {
     go: "golang",
-    javascript: "nodejs"
+    javascript: "nodejs",
+    typescript: "nodejs"
   };
   static starterEditor = "javascript";
 
@@ -367,6 +368,8 @@ class PlaygroundFunction extends React.Component {
         return "go";
       case "javascript":
         return "js";
+      case "typescript":
+        return "ts";
       default:
         return "txt";
     }
@@ -752,8 +755,9 @@ class PlaygroundFunction extends React.Component {
               onChange={this.setLanguage}
               value={language.editor}
             >
-              <option value="go">Golang (1.10)</option>
-              <option value="javascript">NodeJS (10)</option>
+              <option value="go">Golang 1.10</option>
+              <option value="javascript">NodeJS 10</option>
+              <option value="typescript">Typescript 3 and NodeJS 10</option>
             </Input>
           </div>
           <div className="col-9">
@@ -954,13 +958,22 @@ export default withRouter(
     compile: state => ({
       compileFetch: {
         url: `/playground-${state.language.function}`,
-        body: { Mode: "compile", Body: state.code }
+        body: {
+          Mode: "compile",
+          Body: state.code,
+          Language: state.language.editor === "typescript" ? "ts" : undefined
+        }
       }
     }),
     format: state => ({
       formatFetch: {
         url: `/playground-${state.language.function}`,
-        body: { Mode: "format", Body: state.code, Imports: "true" }
+        body: {
+          Mode: "format",
+          Body: state.code,
+          Imports: "true",
+          Language: state.language.editor === "typescript" ? "ts" : undefined
+        }
       }
     })
   }))(PlaygroundFunction)
