@@ -753,7 +753,7 @@ class PlaygroundFunction extends React.Component {
               value={language.editor}
             >
               <option value="go">Golang (1.10)</option>
-              <option value="javascript">NodeJS (8)</option>
+              <option value="javascript">NodeJS (10)</option>
             </Input>
           </div>
           <div className="col-9">
@@ -878,7 +878,8 @@ class PlaygroundFunction extends React.Component {
                 className="ml-2"
                 disabled={compiling || formatting}
               >
-                <FontAwesome name="github" /> Login{!id && " to share"}
+                <FontAwesome name="github" /> Login
+                {!id && " to share"}
               </Button>
             )}
             {(compiling || formatting) && (
